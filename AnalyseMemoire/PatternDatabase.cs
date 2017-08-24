@@ -1,0 +1,13 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace AnalyseMemoire
+{
+    class PatternDatabase
+    {
+        public static byte[] PlayersInfos = { 0xB0, 0xFD, 0xFF, 0xFF, 0x83, 0xEC, 0x08, 0x50, 0x51, 0x90, 0x90, 0x90, 0xFF, 0x50, 0x0C, 0x83, 0xC4, 0x0C };
+    }
+}

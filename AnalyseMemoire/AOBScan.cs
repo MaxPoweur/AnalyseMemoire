@@ -48,6 +48,16 @@ namespace AnalyseMemoire
                 Addy = new IntPtr(MemInfo.BaseAddress.ToInt32() + (int)MemInfo.RegionSize);
             }
         }
+
+        //public static byte[] stringPatternToAOB(String pattern)
+        //{
+        //    byte[] newPattern = new byte[pattern.Count(c => !Char.IsWhiteSpace(c))];
+        //    foreach(char c in pattern)
+        //    {
+
+        //    }
+        //}
+
         protected IntPtr Scan(byte[] sIn, byte[] sFor)
         {
             int[] sBytes = new int[256]; int Pool = 0;
@@ -58,12 +68,20 @@ namespace AnalyseMemoire
                 sBytes[sFor[i]] = End - i;
             while (Pool <= sIn.Length - sFor.Length)
             {
-                for (int i = End; sIn[Pool + i] == sFor[i]; i--)
+                int i = End;
+                while (sIn[Pool + i] == sFor[i] || sFor[i]==(byte)'?')
+                {
                     if (i == 0) return new IntPtr(Pool);
+                    i--;
+                }
+                //if (sFor[i] == (byte)'?')
+                //for (int i = End; sIn[Pool + i] == sFor[i]; i--)
+                //    if (i == 0) return new IntPtr(Pool);
                 Pool += sBytes[sIn[Pool + End]];
             }
             return IntPtr.Zero;
         }
+
         public IntPtr AobScan(byte[] Pattern)
         {
             Process Game = Process.GetProcessById((int)this.ProcessID);

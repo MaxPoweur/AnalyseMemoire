@@ -29,14 +29,54 @@ namespace AnalyseMemoire
             this.sharp = new MemorySharp(process);
         }
 
+        public String[] getAllModules()
+        {
+            String[] modules = new String[sharp.Modules.RemoteModules.Count()];
+            int count = 0;
+            foreach (RemoteModule module in sharp.Modules.RemoteModules)
+            {
+                Console.WriteLine(module.Name + " => " + this.getBaseAddressFromModule(module.Name).ToString("X") + " - " + this.getEndAddressFromModule(module.Name).ToString("X"));
+                modules[count] = module.Name;
+                count++;
+            }
+            return modules;
+        }
+
+        public int AOBScan(byte[] pattern, int offset)
+        {
+            AOBScan aobscan = new AOBScan((uint)this.process.Id);
+
+            return aobscan.AobScan(pattern).ToInt32()==0?0:(aobscan.AobScan(pattern).ToInt32() + offset);
+        }
+
+        public String getModuleOfAddress(int address)
+        {
+            foreach (RemoteModule module in sharp.Modules.RemoteModules)
+            {
+                if(this.getBaseAddressFromModule(module.Name)<= address && this.getEndAddressFromModule(module.Name) >= address)
+                {
+                    return module.Name;
+                }
+            }
+            return null;
+        }
+
         public int getBaseAddressFromModule(String moduleName)
         {
-            int count = 0;
             foreach (RemoteModule module in sharp.Modules.RemoteModules)
             {
                 if (module.Name.Equals(moduleName))
                     return module.BaseAddress.ToInt32();
-                  count++;
+            }
+            throw new Exception("There is any module with this name.");
+        }
+
+        public int getEndAddressFromModule(String moduleName)
+        {
+            foreach (RemoteModule module in sharp.Modules.RemoteModules)
+            {
+                if (module.Name.Equals(moduleName))
+                    return module.BaseAddress.ToInt32() + module.Size;
             }
             throw new Exception("There is any module with this name.");
         }
