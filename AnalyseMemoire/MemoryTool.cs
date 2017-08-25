@@ -9,24 +9,73 @@ using Binarysharp.MemoryManagement.Threading;
 using Binarysharp.MemoryManagement.Windows;
 using Binarysharp.MemoryManagement.Patterns;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using Binarysharp.Assemblers.Fasm;
+using Binarysharp.MemoryManagement.Native.Enums;
+using AnalyseMemoire.Structures;
 
 namespace AnalyseMemoire
 {
     class MemoryTool
     {
+        [DllImport("kernel32.dll")]
+        public static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, uint nSize, out UIntPtr lpNumberOfBytesWritten);
+
+        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+        static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, AllocationType flAllocationType, MemoryProtection flProtect);
+        [Flags]
+        public enum AllocationType
+        {
+            Commit = 0x1000,
+            Reserve = 0x2000,
+            Decommit = 0x4000,
+            Release = 0x8000,
+            Reset = 0x80000,
+            Physical = 0x400000,
+            TopDown = 0x100000,
+            WriteWatch = 0x200000,
+            LargePages = 0x20000000
+        }
+
+        [Flags]
+        public enum MemoryProtection
+        {
+            Execute = 0x10,
+            ExecuteRead = 0x20,
+            ExecuteReadWrite = 0x40,
+            ExecuteWriteCopy = 0x80,
+            NoAccess = 0x01,
+            ReadOnly = 0x02,
+            ReadWrite = 0x04,
+            WriteCopy = 0x08,
+            GuardModifierflag = 0x100,
+            NoCacheModifierflag = 0x200,
+            WriteCombineModifierflag = 0x400
+        }
+
         private MemorySharp sharp;
         private Process process;
+        private int sizePrivateStruct;
+        private PrivateStructure privateStruct;
 
-        public MemoryTool(String processName)
+        public MemoryTool(String processName, int sizePrivateStruct)
         {
             this.process = Process.GetProcessesByName(processName).First();
             this.sharp = new MemorySharp(process);
+            this.sizePrivateStruct = sizePrivateStruct;
+            this.privateStruct = new PrivateStructure(this.malloc(this.sizePrivateStruct));
         }
 
-        public MemoryTool(int processID)
+        public MemoryTool(int processID, int sizePrivateStruct)
         {
             this.process = Process.GetProcessById(processID);
             this.sharp = new MemorySharp(process);
+            this.sizePrivateStruct = sizePrivateStruct;
+            this.privateStruct = new PrivateStructure(this.malloc(this.sizePrivateStruct));
+
         }
 
         public String[] getAllModules()
@@ -49,11 +98,11 @@ namespace AnalyseMemoire
             return aobscan.AobScan(pattern).ToInt32()==0?0:(aobscan.AobScan(pattern).ToInt32() + offset);
         }
 
-        public String getModuleOfAddress(int address)
+        public String getModuleOfAddress(IntPtr address)
         {
             foreach (RemoteModule module in sharp.Modules.RemoteModules)
             {
-                if(this.getBaseAddressFromModule(module.Name)<= address && this.getEndAddressFromModule(module.Name) >= address)
+                if(this.getBaseAddressFromModule(module.Name)<= address.ToInt32() && this.getEndAddressFromModule(module.Name) >= address.ToInt32())
                 {
                     return module.Name;
                 }
@@ -81,12 +130,12 @@ namespace AnalyseMemoire
             throw new Exception("There is any module with this name.");
         }
 
-        public Address<T> Read<T>(int address, bool isRelative)
+        public Address<T> Read<T>(IntPtr address, bool isRelative)
         {
             try
             {
-                IntPtr addressFinal = new IntPtr(address);
-                return new Address<T>(addressFinal, this.sharp.Read<T>(addressFinal, isRelative));
+                IntPtr addressFinal = address;
+                return new Address<T>(address, this.sharp.Read<T>(addressFinal, isRelative));
             }
             catch (TypeInitializationException)
             {
@@ -95,7 +144,7 @@ namespace AnalyseMemoire
             }
         }
 
-        public Address<T> Read<T>(int address, int[] offsets, bool isRelative)
+        public Address<T> Read<T>(IntPtr address, int[] offsets, bool isRelative)
         {
             try
             {
@@ -103,10 +152,10 @@ namespace AnalyseMemoire
 
                 for(int i=0; i<offsets.Length-1; i++)
                 {
-                    currentAddress = this.Read<int>(currentAddress+offsets[i], isRelative).getValue;
+                    currentAddress = this.Read<int>(new IntPtr(currentAddress+offsets[i]), isRelative).getValue;
                 }
 
-                Address<T> finalAddress = new Address<T>(new IntPtr(currentAddress+offsets[offsets.Length-1]), this.Read<T>(currentAddress + offsets[offsets.Length - 1], isRelative).getValue);
+                Address<T> finalAddress = new Address<T>(new IntPtr(currentAddress+offsets[offsets.Length-1]), this.Read<T>(new IntPtr(currentAddress + offsets[offsets.Length - 1]), isRelative).getValue);
                 return finalAddress;
             }
             catch (TypeInitializationException)
@@ -116,11 +165,11 @@ namespace AnalyseMemoire
             }
         }
 
-        public void Write<T>(int address, T value, bool isRelative)
+        public void Write<T>(IntPtr address, T value, bool isRelative)
         {
             try
             {
-                this.sharp.Write<T>(new IntPtr(address), value, isRelative);
+                this.sharp.Write<T>(address, value, isRelative);
             }
             catch (TypeInitializationException)
             {
@@ -129,9 +178,62 @@ namespace AnalyseMemoire
             }
         }
 
-        public void temp(IntPtr address)
+        public IntPtr malloc(int size)
         {
-            sharp.Assembly.Inject(new String[]{"push eax", "mov eax, 0x123F123F", "mov [eax], ecx", "pop eax"},address);
+
+            IntPtr processPtr = OpenProcess((int)ProcessAccessFlags.AllAccess, false, this.process.Id);
+            IntPtr codeCave = VirtualAllocEx(processPtr, IntPtr.Zero, (uint)size, AllocationType.Commit, MemoryProtection.ExecuteReadWrite);
+            return codeCave;
+        }
+
+        public void injectCode(string[] toInject, IntPtr address)
+        {
+            IntPtr processPtr = OpenProcess((int)ProcessAccessFlags.AllAccess, false, this.process.Id);
+            this.sharp.Assembly.Inject(toInject, address);
+        }
+
+        public IntPtr readPointer(IntPtr address)
+        {
+            return new IntPtr(this.sharp.Read<int>(address, false));
+        }
+
+        public void loadPlayersInfos()
+        {
+            IntPtr pattern = new IntPtr(this.AOBScan(PatternDatabase.PlayersInfos, 0xF)); // Search for pattern of playersInfos pattern
+            IntPtr codeCave = this.malloc(100);
+
+
+            Console.WriteLine("Found PlayersDatas pattern at " + pattern.ToInt32().ToString("X"));
+
+            this.injectCode(new string[] { "jmp " + codeCave.ToInt32().ToString("X") + "h", "nop" }, pattern); // codeCave redirection
+            string[] codeCaveInstructions =
+            {
+                "push ecx",
+                "push ebx",
+                "mov ecx, " + this.privateStruct.baseAddress.ToInt32().ToString("X")+"h",
+
+                "mov ebx, [eax]", // Write enemyTeam pointer
+                "mov ebx,[ebx+8]",
+                "mov [ecx], ebx",
+
+                "mov ebx, [eax+4]", // Write allyTeam pointer
+                "mov ebx,[ebx+8]",
+                "mov [ecx+4], ebx",
+
+                "pop ebx",
+                "pop ecx",
+
+                "add esp,0Ch", // ReWrite original instructions
+                "sub esp,0Ch",
+
+                "jmp " + (pattern.ToInt32() + 6).ToString("X") + "h" // Jump into next instructions
+            };
+            this.injectCode(codeCaveInstructions, codeCave);
+        }
+
+        public Structure getPrivateStruct()
+        {
+            return this.privateStruct;
         }
     }
 }
