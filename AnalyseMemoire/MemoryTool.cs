@@ -56,10 +56,10 @@ namespace AnalyseMemoire
             WriteCombineModifierflag = 0x400
         }
 
-        private MemorySharp sharp;
-        private Process process;
-        private int sizePrivateStruct;
-        private PrivateStructure privateStruct;
+        protected MemorySharp sharp;
+        protected Process process;
+        protected int sizePrivateStruct;
+        protected PrivateStructure privateStruct;
 
         public MemoryTool(String processName, int sizePrivateStruct)
         {
@@ -196,41 +196,7 @@ namespace AnalyseMemoire
         {
             return new IntPtr(this.sharp.Read<int>(address, false));
         }
-
-        public void loadPlayersInfos()
-        {
-            IntPtr pattern = new IntPtr(this.AOBScan(PatternDatabase.PlayersInfos, 0xF)); // Search for pattern of playersInfos pattern
-            IntPtr codeCave = this.malloc(100);
-
-
-            Console.WriteLine("Found PlayersDatas pattern at " + pattern.ToInt32().ToString("X"));
-
-            this.injectCode(new string[] { "jmp " + codeCave.ToInt32().ToString("X") + "h", "nop" }, pattern); // codeCave redirection
-            string[] codeCaveInstructions =
-            {
-                "push ecx",
-                "push ebx",
-                "mov ecx, " + this.privateStruct.baseAddress.ToInt32().ToString("X")+"h",
-
-                "mov ebx, [eax]", // Write enemyTeam pointer
-                "mov ebx,[ebx+8]",
-                "mov [ecx], ebx",
-
-                "mov ebx, [eax+4]", // Write allyTeam pointer
-                "mov ebx,[ebx+8]",
-                "mov [ecx+4], ebx",
-
-                "pop ebx",
-                "pop ecx",
-
-                "add esp,0Ch", // ReWrite original instructions
-                "sub esp,0Ch",
-
-                "jmp " + (pattern.ToInt32() + 6).ToString("X") + "h" // Jump into next instructions
-            };
-            this.injectCode(codeCaveInstructions, codeCave);
-        }
-
+        
         public Structure getPrivateStruct()
         {
             return this.privateStruct;

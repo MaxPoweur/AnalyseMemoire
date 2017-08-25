@@ -14,8 +14,8 @@ namespace AnalyseMemoire.Structures
 
         public override void initVariables()
         {
-            this.variables.Add(new Variable<Pointer>("enemyTeam"), 0x0);
-            this.variables.Add(new Variable<Pointer>("allyTeam"), 0x4);
+            this.variables.Add(new Variable("enemyTeam", VariablesTypes.Structure), 0x0);
+            this.variables.Add(new Variable("allyTeam", VariablesTypes.Structure), 0x4);
         }
     }
 }

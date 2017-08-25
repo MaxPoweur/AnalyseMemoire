@@ -49,15 +49,6 @@ namespace AnalyseMemoire
             }
         }
 
-        //public static byte[] stringPatternToAOB(String pattern)
-        //{
-        //    byte[] newPattern = new byte[pattern.Count(c => !Char.IsWhiteSpace(c))];
-        //    foreach(char c in pattern)
-        //    {
-
-        //    }
-        //}
-
         protected IntPtr Scan(byte[] sIn, byte[] sFor)
         {
             int[] sBytes = new int[256]; int Pool = 0;
@@ -74,9 +65,6 @@ namespace AnalyseMemoire
                     if (i == 0) return new IntPtr(Pool);
                     i--;
                 }
-                //if (sFor[i] == (byte)'?')
-                //for (int i = End; sIn[Pool + i] == sFor[i]; i--)
-                //    if (i == 0) return new IntPtr(Pool);
                 Pool += sBytes[sIn[Pool + End]];
             }
             return IntPtr.Zero;

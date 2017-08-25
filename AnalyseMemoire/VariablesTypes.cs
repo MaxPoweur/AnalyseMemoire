@@ -6,8 +6,11 @@ using System.Threading.Tasks;
 
 namespace AnalyseMemoire
 {
-    abstract class IVariable
+    public enum VariablesTypes
     {
-        public String name { get; set; }
+        Integer,
+        Float,
+        Structure,
+        Unknown
     }
 }

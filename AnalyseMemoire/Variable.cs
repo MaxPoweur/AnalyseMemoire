@@ -6,19 +6,22 @@ using System.Threading.Tasks;
 
 namespace AnalyseMemoire
 {
-    class Variable<T> : IVariable
+    class Variable
     {
-        
-        T value { get; set; }
+        public String name { get; set; }
+        public VariablesTypes type { get; set; }
+        public Object value { get; set; }
 
-        public Variable(String name)
+        public Variable(String name, VariablesTypes type)
         {
             this.name = name;
+            this.type = type;
         }
 
-        public Variable(String name, T value)
+        public Variable(String name, VariablesTypes type, Object value)
         {
             this.name = name;
+            this.type = type;
             this.value = value;
         }
     }
