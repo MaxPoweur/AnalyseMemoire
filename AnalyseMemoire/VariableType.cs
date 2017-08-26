@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace AnalyseMemoire
 {
-    public enum VariablesTypes
+    public enum VariableType
     {
         Integer,
         Float,

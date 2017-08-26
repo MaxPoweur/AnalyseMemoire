@@ -16,7 +16,7 @@ using AnalyseMemoire.Structures;
 
 namespace AnalyseMemoire
 {
-    class MemoryTool
+    abstract class MemoryTool
     {
         [DllImport("kernel32.dll")]
         public static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
@@ -66,7 +66,10 @@ namespace AnalyseMemoire
             this.process = Process.GetProcessesByName(processName).First();
             this.sharp = new MemorySharp(process);
             this.sizePrivateStruct = sizePrivateStruct;
-            this.privateStruct = new PrivateStructure(this.malloc(this.sizePrivateStruct));
+            this.privateStruct = new PrivateStructure(this.malloc(this.sizePrivateStruct), true);
+            Console.WriteLine("Private structure isset to " + this.privateStruct.baseAddress.ToInt32().ToString("X"));
+            this.init();
+            this.initStructure(this.privateStruct);
         }
 
         public MemoryTool(int processID, int sizePrivateStruct)
@@ -74,8 +77,9 @@ namespace AnalyseMemoire
             this.process = Process.GetProcessById(processID);
             this.sharp = new MemorySharp(process);
             this.sizePrivateStruct = sizePrivateStruct;
-            this.privateStruct = new PrivateStructure(this.malloc(this.sizePrivateStruct));
-
+            this.privateStruct = new PrivateStructure(this.malloc(this.sizePrivateStruct), true);
+            this.init();
+            this.initStructure(this.privateStruct);
         }
 
         public String[] getAllModules()
@@ -192,6 +196,11 @@ namespace AnalyseMemoire
             this.sharp.Assembly.Inject(toInject, address);
         }
 
+        public IntPtr getVariableAddress(string[] path)
+        {
+            return this.privateStruct.getVariableAddress(path);
+        }
+
         public IntPtr readPointer(IntPtr address)
         {
             return new IntPtr(this.sharp.Read<int>(address, false));
@@ -201,5 +210,21 @@ namespace AnalyseMemoire
         {
             return this.privateStruct;
         }
+
+        public void initStructure(Structure structure)
+        {
+            foreach(var variable in structure.variables)
+            {
+                if(variable.Key.type==VariableType.Structure)
+                {
+                    ((Structure)variable.Key.value).baseAddress = (((Structure)variable.Key.value).isBaseAddressPointer)?this.readPointer(new IntPtr(structure.baseAddress.ToInt32() + variable.Value)):new IntPtr(structure.baseAddress.ToInt32()+variable.Value);
+                    //Console.WriteLine(variable.Key.name + " > " + ((Structure)variable.Key.value).baseAddress);
+                    this.initStructure(((Structure)variable.Key.value));
+                }
+
+            }
+        }
+
+        public abstract void init();
     }
 }

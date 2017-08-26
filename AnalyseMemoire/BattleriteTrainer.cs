@@ -8,7 +8,12 @@ namespace AnalyseMemoire
 {
     class BattleriteTrainer : MemoryTool
     {
-        public BattleriteTrainer() : base("Battlerite", 1024) { }
+        public BattleriteTrainer() : base("Battlerite", 1024) {}
+
+        public override void init()
+        {
+            this.loadPlayersInfos();
+        }
 
         public void loadPlayersInfos()
         {

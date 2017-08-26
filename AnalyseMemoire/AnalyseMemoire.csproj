@@ -69,9 +69,10 @@
     <Compile Include="AOBScan.cs" />
     <Compile Include="BattleriteTrainer.cs" />
     <Compile Include="Pattern.cs" />
-    <Compile Include="Structures\Team.cs" />
-    <Compile Include="Structures\PrivateSructure.cs" />
-    <Compile Include="VariablesTypes.cs" />
+    <Compile Include="Structures\PlayerStructure.cs" />
+    <Compile Include="Structures\PrivateStucture.cs" />
+    <Compile Include="Structures\TeamStructure.cs" />
+    <Compile Include="VariableType.cs" />
     <Compile Include="Variable.cs" />
     <Compile Include="MemoryTool.cs" />
     <Compile Include="PatternDatabase.cs" />

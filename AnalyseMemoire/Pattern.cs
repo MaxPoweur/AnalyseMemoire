@@ -26,7 +26,6 @@ namespace AnalyseMemoire
         public byte[] parsePattern(string pattern)
         {
             pattern = new string(pattern.ToCharArray().Where(c2 => !Char.IsWhiteSpace(c2)).ToArray());
-            Console.WriteLine(pattern+"\n");
             if (pattern.Length % 2 == 1)
                 throw new Exception("The binary key cannot have an odd number of digits");
 
@@ -39,7 +38,6 @@ namespace AnalyseMemoire
                 else
                     arr[i] = (byte)((GetHexVal(pattern[i << 1]) << 4) + (GetHexVal(pattern[(i << 1) + 1])));
             }
-            Console.WriteLine(BitConverter.ToString(arr));
             return arr;
         }
 
@@ -48,12 +46,7 @@ namespace AnalyseMemoire
             if ((byte)hex == '?')
                 return (byte)'?';
             int val = (int)hex;
-            //For uppercase A-F letters:
             return val - (val < 58 ? 48 : 55);
-            //For lowercase a-f letters:
-            //return val - (val < 58 ? 48 : 87);
-            //Or the two combined, but a bit slower:
-            //return val - (val < 58 ? 48 : (val < 97 ? 55 : 87));
         }
     }
 }

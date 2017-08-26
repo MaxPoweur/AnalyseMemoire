@@ -9,16 +9,16 @@ namespace AnalyseMemoire
     class Variable
     {
         public String name { get; set; }
-        public VariablesTypes type { get; set; }
+        public VariableType type { get; set; }
         public Object value { get; set; }
 
-        public Variable(String name, VariablesTypes type)
+        public Variable(String name, VariableType type)
         {
             this.name = name;
             this.type = type;
         }
 
-        public Variable(String name, VariablesTypes type, Object value)
+        public Variable(String name, VariableType type, Object value)
         {
             this.name = name;
             this.type = type;
