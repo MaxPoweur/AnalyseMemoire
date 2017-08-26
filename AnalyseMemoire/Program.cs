@@ -16,7 +16,7 @@ namespace AnalyseMemoire
 
             trainer.loadPlayersInfos();
 
-            Console.WriteLine("allyTeam : " + trainer.getPrivateStruct().getVariableAddress("allyTeam").ToInt32().ToString("X"));
+            Console.WriteLine("allyTeam : " + trainer.getPrivateStruct().baseAddress.ToInt32().ToString("X"));
             //Console.WriteLine("enemyTeam location : " + trainer.getPrivateStruct().getVariableAddress("enemyTeam").ToInt32().ToString("X"));
 
             //Console.WriteLine(memtool.readPointer(new IntPtr(0x6e0000).ToInt32()).ToString("x"));

@@ -35,10 +35,9 @@ namespace AnalyseMemoire
             for (int i = 0; i < pattern.Length >> 1; ++i)
             {
                 if( GetHexVal(pattern[i << 1]) ==((byte)'?'))
-                {
-                    arr[i] = (byte)'?'+(byte)'?';
-                }
-                arr[i] = (byte)((GetHexVal(pattern[i << 1]) << 4) + (GetHexVal(pattern[(i << 1) + 1])));
+                    arr[i] = 0x3F;
+                else
+                    arr[i] = (byte)((GetHexVal(pattern[i << 1]) << 4) + (GetHexVal(pattern[(i << 1) + 1])));
             }
             Console.WriteLine(BitConverter.ToString(arr));
             return arr;

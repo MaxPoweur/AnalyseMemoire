@@ -60,7 +60,7 @@ namespace AnalyseMemoire
             while (Pool <= sIn.Length - sFor.Length)
             {
                 int i = End;
-                while (sIn[Pool + i] == sFor[i] || sFor[i]==(byte)'?')
+                while (sIn[Pool + i] == sFor[i] || sFor[i]==0x3F)
                 {
                     if (i == 0) return new IntPtr(Pool);
                     i--;
