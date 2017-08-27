@@ -26,6 +26,10 @@ namespace AnalyseMemoire
 
         [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
         static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, AllocationType flAllocationType, MemoryProtection flProtect);
+
+        [DllImport("kernel32.dll")]
+        public static extern bool ReadProcessMemory(int hProcess, int lpBaseAddress, byte[] lpBuffer, int dwSize, ref int lpNumberOfBytesRead);
+
         [Flags]
         public enum AllocationType
         {
@@ -203,7 +207,12 @@ namespace AnalyseMemoire
 
         public IntPtr readPointer(IntPtr address)
         {
-            return new IntPtr(this.sharp.Read<int>(address, false));
+            IntPtr processHandle = OpenProcess((int)ProcessAccessFlags.AllAccess, false, this.process.Id);
+            byte[] buffer = new byte[4];
+            int bytesRead=0;
+            ReadProcessMemory((int)processHandle, 0x0046A3B8, buffer, 4, ref bytesRead);
+            Console.WriteLine("OUII:: " + BitConverter.ToString(buffer));
+            return new IntPtr(BitConverter.ToInt32(buffer, 0));
         }
         
         public Structure getPrivateStruct()
@@ -218,7 +227,7 @@ namespace AnalyseMemoire
                 if(variable.Key.type==VariableType.Structure)
                 {
                     ((Structure)variable.Key.value).baseAddress = (((Structure)variable.Key.value).isBaseAddressPointer)?this.readPointer(new IntPtr(structure.baseAddress.ToInt32() + variable.Value)):new IntPtr(structure.baseAddress.ToInt32()+variable.Value);
-                    //Console.WriteLine(variable.Key.name + " > " + ((Structure)variable.Key.value).baseAddress);
+                    Console.WriteLine(variable.Key.name + (((Structure)variable.Key.value).isBaseAddressPointer) + "[" + (structure.baseAddress.ToInt32() + variable.Value).ToString("X") + ":"+ this.readPointer(new IntPtr(structure.baseAddress.ToInt32() + variable.Value)).ToInt32().ToString("X") + "] > " + ((Structure)variable.Key.value).baseAddress.ToInt32().ToString("X"));
                     this.initStructure(((Structure)variable.Key.value));
                 }
 
