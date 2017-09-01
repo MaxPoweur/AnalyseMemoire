@@ -37,6 +37,9 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>true</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -68,7 +71,9 @@
     <Compile Include="Address.cs" />
     <Compile Include="AOBScan.cs" />
     <Compile Include="BattleriteTrainer.cs" />
+    <Compile Include="Memory.cs" />
     <Compile Include="Pattern.cs" />
+    <Compile Include="Pointer.cs" />
     <Compile Include="Structures\PlayerStructure.cs" />
     <Compile Include="Structures\PrivateStucture.cs" />
     <Compile Include="Structures\TeamStructure.cs" />

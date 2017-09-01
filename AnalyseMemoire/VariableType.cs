@@ -11,6 +11,7 @@ namespace AnalyseMemoire
         Integer,
         Float,
         Structure,
+        Pointer,
         Unknown
     }
 }

@@ -13,12 +13,343 @@ using System.Runtime.InteropServices;
 using Binarysharp.Assemblers.Fasm;
 using Binarysharp.MemoryManagement.Native.Enums;
 using AnalyseMemoire.Structures;
+using System.Threading;
+using System.IO;
 
 namespace AnalyseMemoire
 {
     abstract class MemoryTool
     {
-        [DllImport("kernel32.dll")]
+        protected MemorySharp sharp { get; set; }
+        protected Process process { get; set; }
+        protected int sizePrivateStruct { get; set; }
+        protected PrivateStructure privateStruct { get; set; }
+        protected bool newPrivateStructure;
+
+
+        public MemoryTool(String processName, int sizePrivateStruct)
+        {
+            try
+            {
+                this.process = Process.GetProcessesByName(processName).First();
+                this.sharp = new MemorySharp(process);
+
+                Thread threadCheckingProcess = new Thread(new ThreadStart(this.checkProcess));
+                threadCheckingProcess.Start();
+
+                this.sizePrivateStruct = sizePrivateStruct;
+                this.allocPrivateStructure();
+                Console.WriteLine("Private structure isset to " + this.privateStruct.baseAddress.ToInt32().ToString("X"));
+
+                Thread threadRefreshingStructures = new Thread(new ThreadStart(this.refreshStructures));
+                threadRefreshingStructures.Start();
+                this.init();
+            }
+            catch (Exception ex)
+            {
+                if (ex is ArgumentException || ex is InvalidOperationException)
+                {
+                    Console.WriteLine("Le processus distant est fermé. Merci de l'ouvrir puis de lancer notre programme.");
+                    Environment.Exit(1);
+                }
+                Console.WriteLine(ex.Message);
+                throw ex;
+            }
+        }
+
+        public MemoryTool(int processID, int sizePrivateStruct)
+        {
+            try
+            {
+                this.process = Process.GetProcessById(processID);
+                this.sharp = new MemorySharp(process);
+
+                Thread threadCheckingProcess = new Thread(new ThreadStart(this.checkProcess));
+                threadCheckingProcess.Start();
+
+                this.sizePrivateStruct = sizePrivateStruct;
+                this.allocPrivateStructure();
+                Console.WriteLine("Private structure isset to " + this.privateStruct.baseAddress.ToInt32().ToString("X"));
+
+                Thread threadRefreshingStructures = new Thread(new ThreadStart(this.refreshStructures));
+                threadRefreshingStructures.Start();
+                this.init();
+            }
+            catch (Exception ex)
+            {
+                if (ex is ArgumentException || ex is InvalidOperationException)
+                {
+                    Console.WriteLine("Le processus distant est fermé. Merci de l'ouvrir puis de lancer notre programme.");
+                    Environment.Exit(1);
+                }
+                Console.WriteLine(ex.Message);
+                throw ex;
+            }
+        }
+        
+        public abstract void init();
+
+        public void checkProcess()
+        {
+            try
+            {
+                while (true)
+                    Process.GetProcessById(this.process.Id);
+            }
+            catch (Exception ex)
+            {
+                if (ex is ArgumentException || ex is InvalidOperationException)
+                {
+                    Console.WriteLine("Le processus distant est fermé. Merci de l'ouvrir puis de lancer notre programme.");
+                    Environment.Exit(1);
+                }
+                Console.WriteLine(ex.Message);
+                throw ex;
+            }
+        }
+
+        public void refreshStructures()
+        {
+            while(true)
+                this.setStructure(this.privateStruct);
+        }
+
+        public void setStructure(Structure structure)
+        {
+            if (structure.baseAddress == IntPtr.Zero)
+                return;
+            foreach (var variable in structure.variables)
+            {
+                if (variable.Key.type == VariableType.Structure)
+                {
+                    int position = structure.baseAddress.ToInt32() + variable.Value;
+                    IntPtr pointer = this.readPointer(new IntPtr(position));
+
+                    ((Structure)variable.Key.value).baseAddress = (((Structure)variable.Key.value).isBaseAddressPointer) ? pointer : new IntPtr(position);
+
+                    //Console.WriteLine(variable.Key.name + " - " +  (((Structure)variable.Key.value).isBaseAddressPointer) + " [" + (position).ToString("X") + ":"+ pointer.ToInt32().ToString("X") + "] > " + ((Structure)variable.Key.value).baseAddress.ToInt32().ToString("X"));
+
+                    this.setStructure(((Structure)variable.Key.value));
+                }
+                if (variable.Key.type == VariableType.Pointer)
+                {
+                    variable.Key.value = this.readPointer(new IntPtr(structure.baseAddress.ToInt32() + variable.Value));
+                    //Console.WriteLine("ptr: " + (structure.baseAddress.ToInt32() + variable.Value).ToString("X"));
+                }
+
+            }
+        }
+
+        public void allocPrivateStructure()
+        {
+            String path = "settings.ini";
+            IntPtr baseAddress;
+            if (!File.Exists(path))
+            {
+                File.CreateText(path);
+                baseAddress = this.malloc(this.sizePrivateStruct);
+                this.newPrivateStructure = true;
+            }
+            else
+            {
+                string[] fileContent = File.ReadAllLines(path);
+                if (fileContent.Length == 0)
+                {
+                    baseAddress = this.malloc(this.sizePrivateStruct);
+                    this.newPrivateStructure = true;
+                }
+                else
+                {
+                    string lastBaseAddress = fileContent[0];
+                    try
+                    {
+                        if (this.sharp.Read<int>(new IntPtr(Convert.ToInt32(lastBaseAddress, 16)), false) != 1)
+                        {
+                            baseAddress = this.malloc(this.sizePrivateStruct);
+                            this.newPrivateStructure = true;
+                        }
+                        else
+                        {
+                            baseAddress = new IntPtr(Convert.ToInt32(lastBaseAddress, 16));
+                            this.newPrivateStructure = false;
+                        }
+
+                    }
+                    catch (System.ComponentModel.Win32Exception)
+                    {
+                        baseAddress = this.malloc(this.sizePrivateStruct);
+                        this.newPrivateStructure = true;
+                    }
+                }
+            }
+                
+            this.privateStruct = new PrivateStructure(baseAddress, true);
+
+            this.setStructure(this.privateStruct);
+
+            File.WriteAllLines(path, new string[]{ baseAddress.ToInt32().ToString("X")});
+        }
+
+        public String[] getAllModules()
+        {
+            String[] modules = new String[sharp.Modules.RemoteModules.Count()];
+            int count = 0;
+            foreach (RemoteModule module in sharp.Modules.RemoteModules)
+            {
+                Console.WriteLine(module.Name + " => " + this.getBaseAddressFromModule(module.Name).ToString("X") + " - " + this.getEndAddressFromModule(module.Name).ToString("X"));
+                modules[count] = module.Name;
+                count++;
+            }
+            return modules;
+        }
+
+        public int AOBScan(byte[] pattern, int offset)
+        {
+            AOBScan aobscan = new AOBScan((uint)this.process.Id);
+
+            return aobscan.AobScan(pattern).ToInt32()==0?0:(aobscan.AobScan(pattern).ToInt32() + offset);
+        }
+
+        public String getModuleOfAddress(IntPtr address)
+        {
+            foreach (RemoteModule module in sharp.Modules.RemoteModules)
+            {
+                if(this.getBaseAddressFromModule(module.Name).ToInt32()<= address.ToInt32() && this.getEndAddressFromModule(module.Name).ToInt32() >= address.ToInt32())
+                {
+                    return module.Name;
+                }
+            }
+            return null;
+        }
+
+        public IntPtr getBaseAddressFromModule(String moduleName)
+        {
+            foreach (RemoteModule module in sharp.Modules.RemoteModules)
+            {
+                if (module.Name.Equals(moduleName))
+                    return module.BaseAddress;
+            }
+            throw new Exception("There is any module with this name.");
+        }
+
+        public IntPtr getEndAddressFromModule(String moduleName)
+        {
+            foreach (RemoteModule module in sharp.Modules.RemoteModules)
+            {
+                if (module.Name.Equals(moduleName))
+                    return new IntPtr(module.BaseAddress.ToInt32() + module.Size);
+            }
+            throw new Exception("There is any module with this name.");
+        }
+        
+        public void displayModules()
+        {
+            string[] modules = this.getAllModules();
+            foreach(string module in modules)
+            {
+                Console.WriteLine(module + " => [" + this.getBaseAddressFromModule(module).ToInt32().ToString("X") + "-" + this.getEndAddressFromModule(module).ToInt32().ToString("X") + "]");
+            }
+        }
+
+        public IntPtr malloc(int size)
+        {
+            IntPtr codeCave;
+            do
+            {
+                codeCave = VirtualAllocEx(this.process.Handle, IntPtr.Zero, (uint)size, AllocationType.Commit, MemoryProtection.ExecuteReadWrite);
+            } while (Char.IsDigit(codeCave.ToInt32().ToString("X"), 0));
+            if(codeCave == null)
+                System.Console.WriteLine("ERROR VIRTUALALOCEX " + Marshal.GetLastWin32Error());
+            return codeCave;
+        }
+
+        public void injectCode(string[] toInject, IntPtr address)
+        {
+            this.sharp.Assembly.Inject(toInject, address);
+        }
+
+        public IntPtr getVariableAddress(string[] path)
+        {
+            return this.privateStruct.getVariableAddress(path);
+        }
+
+        public IntPtr readPointer(IntPtr address)
+        {
+            byte[] buffer = new byte[4];
+            int bytesRead;
+            if (this.process.Handle==IntPtr.Zero)
+                Console.WriteLine("handle error ! " + Marshal.GetLastWin32Error());
+
+            if (!ReadProcessMemory(this.process.Handle, address, buffer, buffer.Length, out bytesRead))
+            {
+                //Console.WriteLine("ERROR READ " + Marshal.GetLastWin32Error());
+            }
+
+            //Console.WriteLine(address.ToInt32().ToString("X") + ":: " + BitConverter.ToString(buffer));
+
+            return new IntPtr(BitConverter.ToInt32(buffer, 0));
+        }
+
+        public void displayVariable<T>(string[] path)
+        {
+            string display = "[";
+            foreach (string element in path)
+                display += element + ".";
+            display = display.Substring(0, display.Length - 1);
+            display += "::";
+            if (!this.isVariableIsset(path))
+                display += "nonInitialisée";
+            else
+                display += this.getVariable<T>(path);
+            display += "]";
+            Console.WriteLine(display);
+        }
+        public bool isVariableIsset(string[] path)
+        {
+            //Console.WriteLine(path[path.Length - 1] + " ::: " + this.privateStruct.getVariableAddress(path).ToInt32().ToString("X") + " = " + (this.privateStruct.getVariableAddress(path) != IntPtr.Zero));
+            return this.privateStruct.getVariableAddress(path) != IntPtr.Zero;
+        }
+
+        public T getVariable<T>(string[] path)
+        {
+            IntPtr address = this.privateStruct.getVariableAddress(path);
+            return this.sharp.Read<T>(address, false);
+        }
+
+        public void loadDatas(String name, Pattern[] patterns, string[] codeCaveInstructions)
+        {
+            IntPtr pattern = IntPtr.Zero;
+            Pattern p;
+            while (pattern == IntPtr.Zero)
+            {
+                var patternCount = 0;
+                while (patternCount < patterns.Length)
+                {
+                    p = patterns[patternCount];
+                    pattern = new IntPtr(this.AOBScan(p.pattern, p.offset)); // Search for pattern of playersInfos pattern
+                    if (pattern != IntPtr.Zero)
+                        break;
+                    patternCount++;
+                }
+            }
+
+            IntPtr codeCave = this.malloc(100);
+
+            Console.WriteLine("Found " + name + " pattern at " + pattern.ToInt32().ToString("X"));
+            this.injectCode(new string[] { "jmp dword 0x" + codeCave.ToInt32().ToString("X") }, pattern); // codeCave redirection
+
+            //foreach (string code in codeCaveInstructions)
+            //{
+            //    Console.WriteLine(code);
+            //}
+
+            codeCaveInstructions = codeCaveInstructions.Concat(new string[] { "jmp dword 0x" + (pattern.ToInt32() + 5).ToString("X") }).ToArray();
+            this.injectCode(codeCaveInstructions, codeCave);
+            Console.WriteLine(name + " codecave injected!");
+            Thread.CurrentThread.Abort();
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
 
         [DllImport("kernel32.dll", SetLastError = true)]
@@ -27,8 +358,8 @@ namespace AnalyseMemoire
         [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
         static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, AllocationType flAllocationType, MemoryProtection flProtect);
 
-        [DllImport("kernel32.dll")]
-        public static extern bool ReadProcessMemory(int hProcess, int lpBaseAddress, byte[] lpBuffer, int dwSize, ref int lpNumberOfBytesRead);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, [Out()] byte[] lpBuffer, int dwSize, out int lpNumberOfBytesRead);
 
         [Flags]
         public enum AllocationType
@@ -59,181 +390,5 @@ namespace AnalyseMemoire
             NoCacheModifierflag = 0x200,
             WriteCombineModifierflag = 0x400
         }
-
-        protected MemorySharp sharp;
-        protected Process process;
-        protected int sizePrivateStruct;
-        protected PrivateStructure privateStruct;
-
-        public MemoryTool(String processName, int sizePrivateStruct)
-        {
-            this.process = Process.GetProcessesByName(processName).First();
-            this.sharp = new MemorySharp(process);
-            this.sizePrivateStruct = sizePrivateStruct;
-            this.privateStruct = new PrivateStructure(this.malloc(this.sizePrivateStruct), true);
-            Console.WriteLine("Private structure isset to " + this.privateStruct.baseAddress.ToInt32().ToString("X"));
-            this.init();
-            this.initStructure(this.privateStruct);
-        }
-
-        public MemoryTool(int processID, int sizePrivateStruct)
-        {
-            this.process = Process.GetProcessById(processID);
-            this.sharp = new MemorySharp(process);
-            this.sizePrivateStruct = sizePrivateStruct;
-            this.privateStruct = new PrivateStructure(this.malloc(this.sizePrivateStruct), true);
-            this.init();
-            this.initStructure(this.privateStruct);
-        }
-
-        public String[] getAllModules()
-        {
-            String[] modules = new String[sharp.Modules.RemoteModules.Count()];
-            int count = 0;
-            foreach (RemoteModule module in sharp.Modules.RemoteModules)
-            {
-                Console.WriteLine(module.Name + " => " + this.getBaseAddressFromModule(module.Name).ToString("X") + " - " + this.getEndAddressFromModule(module.Name).ToString("X"));
-                modules[count] = module.Name;
-                count++;
-            }
-            return modules;
-        }
-
-        public int AOBScan(byte[] pattern, int offset)
-        {
-            AOBScan aobscan = new AOBScan((uint)this.process.Id);
-
-            return aobscan.AobScan(pattern).ToInt32()==0?0:(aobscan.AobScan(pattern).ToInt32() + offset);
-        }
-
-        public String getModuleOfAddress(IntPtr address)
-        {
-            foreach (RemoteModule module in sharp.Modules.RemoteModules)
-            {
-                if(this.getBaseAddressFromModule(module.Name)<= address.ToInt32() && this.getEndAddressFromModule(module.Name) >= address.ToInt32())
-                {
-                    return module.Name;
-                }
-            }
-            return null;
-        }
-
-        public int getBaseAddressFromModule(String moduleName)
-        {
-            foreach (RemoteModule module in sharp.Modules.RemoteModules)
-            {
-                if (module.Name.Equals(moduleName))
-                    return module.BaseAddress.ToInt32();
-            }
-            throw new Exception("There is any module with this name.");
-        }
-
-        public int getEndAddressFromModule(String moduleName)
-        {
-            foreach (RemoteModule module in sharp.Modules.RemoteModules)
-            {
-                if (module.Name.Equals(moduleName))
-                    return module.BaseAddress.ToInt32() + module.Size;
-            }
-            throw new Exception("There is any module with this name.");
-        }
-
-        public Address<T> Read<T>(IntPtr address, bool isRelative)
-        {
-            try
-            {
-                IntPtr addressFinal = address;
-                return new Address<T>(address, this.sharp.Read<T>(addressFinal, isRelative));
-            }
-            catch (TypeInitializationException)
-            {
-                Console.WriteLine("Error while trying to retrieve the specified value.\nPlease check the value type.");
-                return new Address<T>();
-            }
-        }
-
-        public Address<T> Read<T>(IntPtr address, int[] offsets, bool isRelative)
-        {
-            try
-            {
-                int currentAddress = this.Read<int>(address, isRelative).getValue;
-
-                for(int i=0; i<offsets.Length-1; i++)
-                {
-                    currentAddress = this.Read<int>(new IntPtr(currentAddress+offsets[i]), isRelative).getValue;
-                }
-
-                Address<T> finalAddress = new Address<T>(new IntPtr(currentAddress+offsets[offsets.Length-1]), this.Read<T>(new IntPtr(currentAddress + offsets[offsets.Length - 1]), isRelative).getValue);
-                return finalAddress;
-            }
-            catch (TypeInitializationException)
-            {
-                Console.WriteLine("Error while trying to retrieve the specified value.\nPlease check the value type.");
-                return new Address<T>();
-            }
-        }
-
-        public void Write<T>(IntPtr address, T value, bool isRelative)
-        {
-            try
-            {
-                this.sharp.Write<T>(address, value, isRelative);
-            }
-            catch (TypeInitializationException)
-            {
-                Console.WriteLine("Error while trying to write to the specified address.\nPlease check the value type.");
-
-            }
-        }
-
-        public IntPtr malloc(int size)
-        {
-
-            IntPtr processPtr = OpenProcess((int)ProcessAccessFlags.AllAccess, false, this.process.Id);
-            IntPtr codeCave = VirtualAllocEx(processPtr, IntPtr.Zero, (uint)size, AllocationType.Commit, MemoryProtection.ExecuteReadWrite);
-            return codeCave;
-        }
-
-        public void injectCode(string[] toInject, IntPtr address)
-        {
-            IntPtr processPtr = OpenProcess((int)ProcessAccessFlags.AllAccess, false, this.process.Id);
-            this.sharp.Assembly.Inject(toInject, address);
-        }
-
-        public IntPtr getVariableAddress(string[] path)
-        {
-            return this.privateStruct.getVariableAddress(path);
-        }
-
-        public IntPtr readPointer(IntPtr address)
-        {
-            IntPtr processHandle = OpenProcess((int)ProcessAccessFlags.AllAccess, false, this.process.Id);
-            byte[] buffer = new byte[4];
-            int bytesRead=0;
-            ReadProcessMemory((int)processHandle, 0x0046A3B8, buffer, 4, ref bytesRead);
-            Console.WriteLine("OUII:: " + BitConverter.ToString(buffer));
-            return new IntPtr(BitConverter.ToInt32(buffer, 0));
-        }
-        
-        public Structure getPrivateStruct()
-        {
-            return this.privateStruct;
-        }
-
-        public void initStructure(Structure structure)
-        {
-            foreach(var variable in structure.variables)
-            {
-                if(variable.Key.type==VariableType.Structure)
-                {
-                    ((Structure)variable.Key.value).baseAddress = (((Structure)variable.Key.value).isBaseAddressPointer)?this.readPointer(new IntPtr(structure.baseAddress.ToInt32() + variable.Value)):new IntPtr(structure.baseAddress.ToInt32()+variable.Value);
-                    Console.WriteLine(variable.Key.name + (((Structure)variable.Key.value).isBaseAddressPointer) + "[" + (structure.baseAddress.ToInt32() + variable.Value).ToString("X") + ":"+ this.readPointer(new IntPtr(structure.baseAddress.ToInt32() + variable.Value)).ToInt32().ToString("X") + "] > " + ((Structure)variable.Key.value).baseAddress.ToInt32().ToString("X"));
-                    this.initStructure(((Structure)variable.Key.value));
-                }
-
-            }
-        }
-
-        public abstract void init();
     }
 }

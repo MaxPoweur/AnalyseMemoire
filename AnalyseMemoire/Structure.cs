@@ -71,7 +71,15 @@ namespace AnalyseMemoire.Structures
                     return ((Structure)variable.Key.value).getVariableAddress(newPath);
                 }
                 else if (variable.Key.name.Equals(path[0]) && variable.Key.type != VariableType.Structure && 1 == path.Length)
-                    return new IntPtr(this.baseAddress.ToInt32() + variable.Value);
+                {
+                    if(variable.Key.type== VariableType.Pointer)
+                    {
+                        //Console.WriteLine(((IntPtr)variable.Key.value).ToInt32().ToString("X"));
+                        return (IntPtr)variable.Key.value;
+                    }
+                    else
+                        return this.baseAddress==IntPtr.Zero ? IntPtr.Zero : new IntPtr(this.baseAddress.ToInt32() + variable.Value);
+                }
                 else if (variable.Key.name.Equals(path[0]) && variable.Key.type == VariableType.Structure && 1 == path.Length)
                 {
                     //Console.WriteLine("New search : " + String.Join(",", path));

@@ -1,3 +1,3 @@
-﻿- Retrouver l'Array Of Bytes de la fonction getPlayersInfos()
-- Créer une méthode d'injection clean de code dans la mémoire
-- Construire la structure Players_Infos[]
+﻿- zoomHack
+- retrouver AOB pos players
+- automatiser size codecave Inject

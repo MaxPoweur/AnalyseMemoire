@@ -16,7 +16,7 @@ namespace AnalyseMemoire.Structures
         {
             this.variables.Add(new Variable("player1", VariableType.Structure, new PlayerStructure(false)), 0x0);
             this.variables.Add(new Variable("player2", VariableType.Structure, new PlayerStructure(false)), 0x88);
-            this.variables.Add(new Variable("player2", VariableType.Structure, new PlayerStructure(false)), 0x110);
+            this.variables.Add(new Variable("player3", VariableType.Structure, new PlayerStructure(false)), 0x110);
         }
     }
 }

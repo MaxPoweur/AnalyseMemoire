@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace AnalyseMemoire
 {
-    interface Pointer
+    class Pointer
     {
+        public IntPtr pointedAddress { get; set; }
     }
 }
