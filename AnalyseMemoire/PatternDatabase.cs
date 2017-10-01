@@ -27,7 +27,7 @@ namespace AnalyseMemoire
             //0x10, 0x8D, 0x65, 0xFC, 0x5F, 0xC9, 0xC3, 0x00, 0x00, 0x00, 0x55, 0x8B, 0xEC, 0x57, 0x83, 0xEC, 0x04,
             //0x8B, 0x7D, 0x08, 0x8B, 0x47, 0x08, 0x8B, 0xC8, 0x8B, 0x49, 0x0C, 0x83, 0xEC, 0x04, 0x51, 0x6A, 0x00,
             //0x50, 0xE8, (byte)'?', (byte)'?', (byte)'?', (byte)'?', (byte)'?', (byte)'?', (byte)'?', (byte)'?', 0x83 }, 0x00),
-            new Pattern("83 C4 0C 8B 47 28 8D 8D 64FDFFFF 83 EC 08 50 51 90 90 90 FF 50 0C 83 C4 0C 83 EC 0C", 0x17)
+            new Pattern("00 00 00 00 00 00 55 8B EC 53 57 56 83 EC 2C 8B 75 0C 8B 05 ?? ?? ?? ?? 85 C0 ?? ?? ?? ?? ?? ?? 8D 46 2C 8B 38 85 FF ?? ?? ?? ?? ?? ??8D 46 10 8B 18 85 DB 74 28 8D 46 08 8B 00 8D 4D D0 83 EC 08 53 51 FF D0 83 C4 0C 8B 45 08 8B 4D D0 89 08 8B 4D D4 89 48 04 8B 4D D8 89 48 08 EB 25 8D 46 08 8B 00 8D 4D DC 83 EC 0C 51 FF D0 83 C4 0C 8B 45 08 8B 4D DC 89 08 8B 4D E0 89 48 04 8B 4D E4 89 48 08 8D 65 F4 5E 5F 5B C9 C2 ?? ?? 8D 45 E8 83 EC 08 57 50 90 90 90 FF 57 0C 83 C4 0C EB 8D E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 00 00 00 00 55 8B EC 57 83 EC 04 8B 7D 08 8B 47 08 8B C8 8B 49 0C 83 EC 04 51 6A 00 50 E8 ?? ?? ?? ?? 83 C4 10 C7 47 0C ?? ?? ?? ?? 8B 47 10 40 89 47 10 8D 65 FC 5F C9 C3 00 00 00 55 8B EC 57 83 EC 04 8B 7D 08 8B 47 08 8B C8 8B 49 0C 83 EC 04 51 6A 00 50 E8", 0x43)
         };
 
         public static Pattern[] UserStatus = new Pattern[] {

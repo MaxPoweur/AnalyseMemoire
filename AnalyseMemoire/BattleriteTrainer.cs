@@ -13,11 +13,11 @@ namespace AnalyseMemoire
 
         public override void init()
         {
-            if (this.newPrivateStructure)
-            {
-                Thread threadLoadingPlayerStatus = new Thread(new ThreadStart(this.loadUserStatus));
-                threadLoadingPlayerStatus.Start(); // userStatus utilisable uniquement lorsque l'user a déjà été horsJeu
-            }
+            //if (this.newPrivateStructure)
+            //{
+            //    Thread threadLoadingPlayerStatus = new Thread(new ThreadStart(this.loadUserStatus));
+            //    threadLoadingPlayerStatus.Start(); // userStatus utilisable uniquement lorsque l'user a déjà été horsJeu
+            //}
             if (!this.isVariableIsset(new string[] { "allyTeam" }))
             {
                 Thread threadLoadingPlayersDatas = new Thread(new ThreadStart(this.loadPlayersInfos));
@@ -44,15 +44,15 @@ namespace AnalyseMemoire
 
             IntPtr codeCave = this.malloc(100);
 
-            Console.WriteLine("Found "+name+" pattern at " + pattern.ToInt32().ToString("X"));
+            Console.WriteLine("Found " + name + " pattern at " + pattern.ToInt32().ToString("X"));
             this.injectCode(new string[] { "jmp dword 0x" + codeCave.ToInt32().ToString("X") }, pattern); // codeCave redirection
 
             //foreach (string code in codeCaveInstructions)
             //{
             //    Console.WriteLine(code);
             //}
-            codeCaveInstructions = codeCaveInstructions.Concat(new string[]{"jmp dword 0x" + (pattern.ToInt32() + sizeInstruction).ToString("X")}).ToArray();
-             // Jump into next instructions
+            codeCaveInstructions = codeCaveInstructions.Concat(new string[] { "jmp dword 0x" + (pattern.ToInt32() + sizeInstruction).ToString("X") }).ToArray();
+            // Jump into next instructions
             this.injectCode(codeCaveInstructions, codeCave);
             Thread.CurrentThread.Abort();
         }
@@ -85,6 +85,7 @@ namespace AnalyseMemoire
         {
             string[] codeCaveInstructions =
             {
+                "call eax",
                 "push ecx",
                 "push ebx",
                 "mov ecx, 0x" + this.privateStruct.baseAddress.ToInt32().ToString("X"),
@@ -97,17 +98,16 @@ namespace AnalyseMemoire
                 "mov [ecx+4], ebx",
 
                 "mov ebx, [eax+4]", // Write allyTeam pointer
-                "mov ebx, [ebx+8]",
+                "mov ebx ,[ebx+8]",
                 "mov [ecx+8], ebx",
 
                 "pop ebx",
                 "pop ecx",
 
-                "add esp, 0Ch", // ReWrite original instructions
-                "sub esp, 0Ch"
+                "add esp, 0Ch" // ReWrite original instructions
             };
 
-            this.loadDatas("playerInfos", PatternDatabase.PlayersInfos, codeCaveInstructions, 6);
+            this.loadDatas("playerInfos", PatternDatabase.PlayersInfos, codeCaveInstructions, 5);
         }
     }
 }

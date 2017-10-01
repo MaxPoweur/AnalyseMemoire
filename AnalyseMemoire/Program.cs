@@ -13,21 +13,21 @@ namespace AnalyseMemoire
 
         static void Main(String[] args)
         {
-            //BattleriteTrainer trainer = new BattleriteTrainer();
-            //string[] path = new string[] {"userStatus"};
-            //trainer.displayVariable<int>(path);
-            //path = new string[] {"allyTeam", "player1", "health" };
-            //trainer.displayVariable<float>(path);
-            //path = new string[] {"allyTeam", "player2", "health"};
-            //trainer.displayVariable<float>(path);
-            //path = new string[] {"allyTeam", "player3", "health"};
-            //trainer.displayVariable<float>(path);
-            //path = new string[] {"enemyTeam", "player1", "health"};
-            //trainer.displayVariable<float>(path);
-            //path = new string[] {"enemyTeam", "player2", "health"};
-            //trainer.displayVariable<float>(path);
-            //path = new string[] {"enemyTeam", "player3", "health"};
-            //trainer.displayVariable<float>(path);
+            BattleriteTrainer trainer = new BattleriteTrainer();
+            string[] path = new string[] { "userStatus" };
+            trainer.displayVariable<int>(path);
+            path = new string[] { "allyTeam", "player1", "health" };
+            trainer.displayVariable<float>(path);
+            path = new string[] { "allyTeam", "player2", "health" };
+            trainer.displayVariable<float>(path);
+            path = new string[] { "allyTeam", "player3", "health" };
+            trainer.displayVariable<float>(path);
+            path = new string[] { "enemyTeam", "player1", "health" };
+            trainer.displayVariable<float>(path);
+            path = new string[] { "enemyTeam", "player2", "health" };
+            trainer.displayVariable<float>(path);
+            path = new string[] { "enemyTeam", "player3", "health" };
+            trainer.displayVariable<float>(path);
 
 
             //string[] codeCaveInstructions =
@@ -61,7 +61,7 @@ namespace AnalyseMemoire
             //    Console.WriteLine(code);
             //}
 
-            Console.WriteLine(BitConverter.ToString(FasmNet.Assemble(new string[]{ "add esp, 0Ch" })));
+            //Console.WriteLine(BitConverter.ToString(FasmNet.Assemble(new string[]{ "add esp, 0Ch" })));
 
 
         }
